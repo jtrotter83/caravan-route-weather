@@ -1,0 +1,17 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main, develop]
+
+jobs:
+  ci:
+    uses: jtrotter83/shared-workflows/.github/workflows/ci-ts.yml@main
+    with:
+      node-version: "22"
+      enable-pages-preview: true
+      coverage-threshold: 80
+
+  pr-title:
+    uses: jtrotter83/shared-workflows/.github/workflows/pr-title.yml@main
