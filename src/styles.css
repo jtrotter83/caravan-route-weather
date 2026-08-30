@@ -1,0 +1,180 @@
+:root {
+  color-scheme: light;
+  font-family:
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    sans-serif;
+  line-height: 1.5;
+}
+
+body {
+  margin: 0;
+  background: #f5f7fa;
+  color: #1c2733;
+}
+
+.app {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+.tagline {
+  color: #5b6b7b;
+  margin-top: -0.5rem;
+}
+
+.planner {
+  display: grid;
+  gap: 1rem;
+  background: #fff;
+  padding: 1rem;
+  border-radius: 12px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+
+.place-input label,
+.planner > label {
+  display: grid;
+  gap: 0.25rem;
+  font-weight: 600;
+}
+
+input[type='text'],
+input[type='datetime-local'] {
+  padding: 0.5rem;
+  border: 1px solid #c4cfd9;
+  border-radius: 8px;
+  font-size: 1rem;
+}
+
+.results {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.map {
+  height: 420px;
+  border-radius: 12px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  z-index: 0;
+}
+
+.panels {
+  display: grid;
+  gap: 1rem;
+}
+
+.summary,
+.timeline {
+  background: #fff;
+  padding: 1rem;
+  border-radius: 12px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+
+.summary h2 {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0;
+}
+
+.dot {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+}
+
+.timeline ol {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.timeline li {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+}
+
+.timeline li[data-risk='danger'] {
+  border-left: 3px solid #d32f2f;
+  padding-left: 0.5rem;
+}
+
+.timeline li[data-risk='caution'] {
+  border-left: 3px solid #f9a825;
+  padding-left: 0.5rem;
+}
+
+.timeline p {
+  margin: 0.15rem 0;
+}
+
+.reasons {
+  margin: 0.25rem 0 0;
+  padding-left: 1.2rem;
+  color: #8a6d00;
+}
+
+.hint {
+  color: #5b6b7b;
+  font-weight: 400;
+  font-size: 0.9rem;
+}
+
+.chosen {
+  color: #2e7d32;
+  font-size: 0.85rem;
+  margin: 0.25rem 0 0;
+}
+
+.error {
+  color: #c62828;
+}
+
+.results-list,
+.place-input .results {
+  margin: 0.25rem 0 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid #c4cfd9;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.place-input .results button {
+  width: 100%;
+  text-align: left;
+  padding: 0.5rem;
+  background: #fff;
+  border: none;
+  cursor: pointer;
+  font: inherit;
+}
+
+.place-input .results button:hover {
+  background: #eef3f8;
+}
+
+button[type='submit'] {
+  padding: 0.6rem 1.2rem;
+  border: none;
+  border-radius: 8px;
+  background: #1e88e5;
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+button[type='submit']:disabled {
+  background: #9db8cd;
+  cursor: not-allowed;
+}
