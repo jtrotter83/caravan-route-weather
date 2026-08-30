@@ -5,17 +5,18 @@ on:
   push:
     branches: [main, develop]
 
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
 jobs:
-  verify:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-      - run: npm ci
-      - run: npm run format:check
-      - run: npm run lint
-      - run: npm test
-      - run: npm run build
+  ci:
+    uses: jtrotter83/shared-workflows/.github/workflows/ci-ts.yml@main
+    with:
+      node-version: '22'
+      enable-pages-preview: true
+      coverage-threshold: 80
+
+  pr-title:
+    uses: jtrotter83/shared-workflows/.github/workflows/pr-title.yml@main
