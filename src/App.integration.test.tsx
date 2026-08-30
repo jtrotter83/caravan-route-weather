@@ -25,13 +25,7 @@ const hourly = (gusts: number[], times: string[]) => ({
   },
 });
 
-const TIMES = [
-  '2026-08-30T09:00',
-  '2026-08-30T10:00',
-  '2026-08-30T11:00',
-  '2026-08-30T12:00',
-  '2026-08-30T13:00',
-];
+const TIMES = [9, 10, 11, 12, 13].map((h) => Date.UTC(2026, 7, 30, h) / 1000);
 
 beforeEach(() => {
   vi.stubGlobal(

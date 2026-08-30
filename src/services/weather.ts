@@ -24,7 +24,8 @@ export interface WeatherService {
 
 interface OpenMeteoLocationResponse {
   hourly: {
-    time: string[];
+    /** Epoch seconds (we request &timeformat=unixtime to avoid TZ ambiguity). */
+    time: number[];
     temperature_2m: number[];
     wind_speed_10m: number[];
     wind_gusts_10m: number[];
@@ -48,7 +49,7 @@ export class OpenMeteoWeatherService implements WeatherService {
     const lng = waypoints.map((w) => w.position.lng.toFixed(4)).join(',');
     const url =
       `${OPEN_METEO_BASE}?latitude=${lat}&longitude=${lng}` +
-      `&hourly=${HOURLY_VARS.join(',')}&wind_speed_unit=mph&forecast_days=7&timezone=UTC`;
+      `&hourly=${HOURLY_VARS.join(',')}&wind_speed_unit=mph&forecast_days=7&timezone=UTC&timeformat=unixtime`;
 
     const res = await this.fetchFn(url, { signal });
     if (!res.ok) throw new Error(`Open-Meteo request failed: ${res.status}`);
@@ -57,7 +58,16 @@ export class OpenMeteoWeatherService implements WeatherService {
     // a single object otherwise.
     const locations: OpenMeteoLocationResponse[] = Array.isArray(raw) ? raw : [raw];
 
-    return waypoints.map((waypoint, i) => pickHourAtEta(waypoint, locations[i]));
+    return waypoints.map((waypoint, i) => {
+      const location = locations[i];
+      if (!location?.hourly?.time?.length) {
+        throw new Error(
+          `Open-Meteo response missing hourly data for waypoint ${i} ` +
+            `(${waypoint.position.lat.toFixed(2)}, ${waypoint.position.lng.toFixed(2)})`,
+        );
+      }
+      return pickHourAtEta(waypoint, location);
+    });
   }
 }
 
@@ -68,12 +78,13 @@ export function pickHourAtEta(
 ): WaypointWeather {
   const { time } = location.hourly;
   const eta = waypoint.etaMs;
-  const lastSlot = Date.parse(time[time.length - 1]);
+  const slotMs = (i: number) => time[i] * 1000; // unixtime → epoch ms (UTC-unambiguous)
+  const lastSlot = slotMs(time.length - 1);
 
   let bestIdx = 0;
   let bestDelta = Number.POSITIVE_INFINITY;
   for (let i = 0; i < time.length; i++) {
-    const delta = Math.abs(Date.parse(time[i]) - eta);
+    const delta = Math.abs(slotMs(i) - eta);
     if (delta < bestDelta) {
       bestDelta = delta;
       bestIdx = i;
@@ -82,7 +93,7 @@ export function pickHourAtEta(
 
   return {
     waypoint,
-    time: time[bestIdx],
+    time: new Date(time[bestIdx] * 1000).toISOString(),
     temperatureC: location.hourly.temperature_2m[bestIdx],
     windSpeedMph: location.hourly.wind_speed_10m[bestIdx],
     windGustMph: location.hourly.wind_gusts_10m[bestIdx],

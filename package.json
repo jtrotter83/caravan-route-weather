@@ -9,7 +9,7 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "test": "vitest run",
+    "test": "TZ=Europe/London vitest run",
     "smoke": "node scripts/smoke-check.mjs"
   },
   "dependencies": {
