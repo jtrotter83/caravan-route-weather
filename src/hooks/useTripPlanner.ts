@@ -17,13 +17,13 @@ export function useTripPlanner({ routing, weather }: TripPlannerDeps) {
   const [plan, setPlan] = useState<TripPlan | null>(null);
 
   const planTrip = useCallback(
-    async (start: Place, destination: Place, departureMs: number) => {
+    async (start: Place, destination: Place, departureMs: number, signal?: AbortSignal) => {
       setStatus('loading');
       setError(null);
       try {
-        const route = await routing.route(start, destination);
+        const route = await routing.route(start, destination, signal);
         const waypoints = sampleWaypoints(route, departureMs);
-        const forecast = await weather.forecastAtEtas(waypoints);
+        const forecast = await weather.forecastAtEtas(waypoints, signal);
         setPlan({ route, waypoints, weather: forecast });
         setStatus('done');
       } catch (e) {

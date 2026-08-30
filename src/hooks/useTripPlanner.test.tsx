@@ -57,6 +57,17 @@ describe('useTripPlanner', () => {
     expect(result.current.error).toBeNull();
   });
 
+  it('threads the AbortSignal into both service calls', async () => {
+    const d = deps();
+    const controller = new AbortController();
+    const { result } = renderHook(() => useTripPlanner(d));
+    await result.current.planTrip(start, destination, 0, controller.signal);
+    await waitFor(() => expect(result.current.status).toBe('done'));
+    expect(d.routing.route).toHaveBeenCalledWith(start, destination, controller.signal);
+    const waypoints = d.weather.forecastAtEtas.mock.calls[0][1];
+    expect(waypoints).toBe(controller.signal);
+  });
+
   it('propagates routing failures into an error state', async () => {
     const d = deps({
       routing: { route: vi.fn(async () => Promise.reject(new Error('No route found'))) },
