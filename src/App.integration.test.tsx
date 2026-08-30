@@ -72,10 +72,11 @@ describe('App (integration, all external APIs mocked)', () => {
     render(<App />);
 
     // Pin departure inside the mocked forecast window so the chosen hour
-    // slots are deterministic regardless of wall-clock time.
+    // slots are deterministic regardless of wall-clock time. The datetime
+    // input is local (suite runs in TZ=Europe/London), so 10:00 BST = 09:00 UTC.
     const departureInput = screen.getByLabelText(/departure/i);
     await user.clear(departureInput);
-    await user.type(departureInput, '2026-08-30T09:00');
+    await user.type(departureInput, '2026-08-30T10:00');
 
     expect(screen.getByRole('button', { name: /check route weather/i })).toBeDisabled();
 
