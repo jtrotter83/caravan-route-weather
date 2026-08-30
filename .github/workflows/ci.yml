@@ -14,7 +14,7 @@ jobs:
   ci:
     uses: jtrotter83/shared-workflows/.github/workflows/ci-ts.yml@main
     with:
-      node-version: "22"
+      node-version: '22'
       enable-pages-preview: true
       coverage-threshold: 80
 
