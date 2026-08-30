@@ -102,8 +102,12 @@ describe('useTripPlanner', () => {
 describe('formatters', () => {
   it('formats distance and duration', () => {
     expect(formatKm(180000)).toBe('180 km');
+    expect(formatKm(18400)).toBe('18 km');
     expect(formatDuration(5400)).toBe('1h 30m');
     expect(formatDuration(1500)).toBe('25m');
+    // Minutes round up into the next hour, never "1h 60m".
+    expect(formatDuration(3599)).toBe('1h 0m');
+    expect(formatDuration(7199)).toBe('2h 0m');
   });
 
   it('defaults departure to an hour ahead', () => {
