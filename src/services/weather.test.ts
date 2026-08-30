@@ -101,12 +101,12 @@ describe('OpenMeteoWeatherService', () => {
   });
 
   it('throws a clear error when a location response is missing', async () => {
-    const fetchFn = vi.fn(async () => new Response(JSON.stringify([{ error: true, reason: 'oops' }]), { status: 200 }));
+    const fetchFn = vi.fn(
+      async () => new Response(JSON.stringify([{ error: true, reason: 'oops' }]), { status: 200 }),
+    );
     const svc = new OpenMeteoWeatherService(fetchFn as unknown as typeof fetch);
     await expect(
-      svc.forecastAtEtas([
-        { index: 0, position: { lat: 52, lng: -1 }, fraction: 0, etaMs: 0 },
-      ]),
+      svc.forecastAtEtas([{ index: 0, position: { lat: 52, lng: -1 }, fraction: 0, etaMs: 0 }]),
     ).rejects.toThrow(/missing hourly data for waypoint 0/u);
   });
 
