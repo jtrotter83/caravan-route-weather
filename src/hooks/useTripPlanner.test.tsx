@@ -64,7 +64,7 @@ describe('useTripPlanner', () => {
     await result.current.planTrip(start, destination, 0, controller.signal);
     await waitFor(() => expect(result.current.status).toBe('done'));
     expect(d.routing.route).toHaveBeenCalledWith(start, destination, controller.signal);
-    const waypoints = d.weather.forecastAtEtas.mock.calls[0][1];
+    const waypoints = (d.weather.forecastAtEtas as ReturnType<typeof vi.fn>).mock.calls[0][1];
     expect(waypoints).toBe(controller.signal);
   });
 

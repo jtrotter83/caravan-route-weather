@@ -13,7 +13,7 @@ import type { Place } from './types';
 const start: Place = { label: 'Birmingham, UK', lat: 52.48, lng: -1.9 };
 const destination: Place = { label: 'Manchester, UK', lat: 53.48, lng: -2.24 };
 
-const hourly = (gusts: number[], times: string[]) => ({
+const hourly = (gusts: number[], times: number[]) => ({
   hourly: {
     time: times,
     temperature_2m: times.map(() => 14),
