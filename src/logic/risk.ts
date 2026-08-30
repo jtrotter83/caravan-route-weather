@@ -50,15 +50,23 @@ export function assessRisk(w: WaypointWeather): RiskAssessment {
   return { level, reasons };
 }
 
-/** Aggregate risk across the whole trip (worst point wins). */
+/** Aggregate risk across the whole trip: worst level wins, all reasons kept. */
 export function assessTripRisk(weather: WaypointWeather[]): RiskAssessment {
   const order = { ok: 0, caution: 1, danger: 2 } as const;
-  let worst: RiskAssessment = { level: 'ok', reasons: [] };
+  let level: RiskAssessment['level'] = 'ok';
+  const reasons: string[] = [];
   for (const w of weather) {
     const r = assessRisk(w);
-    if (order[r.level] > order[worst.level]) worst = r;
+    if (order[r.level] > order[level]) level = r.level;
+    if (r.reasons.length > 0) {
+      const at = new Date(w.waypoint.etaMs).toLocaleTimeString('en-GB', {
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+      reasons.push(...r.reasons.map((reason) => `${at} — ${reason}`));
+    }
   }
-  return worst;
+  return { level, reasons };
 }
 
 /** Colour for map markers / timeline entries. */

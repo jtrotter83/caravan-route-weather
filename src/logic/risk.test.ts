@@ -60,6 +60,20 @@ describe('assessTripRisk', () => {
   it('is ok when all waypoints are ok', () => {
     expect(assessTripRisk([weather(), weather()]).level).toBe('ok');
   });
+
+  it('aggregates warning reasons across ALL waypoints, not just the worst one', () => {
+    const r = assessTripRisk([
+      weather({ windGustMph: 32, waypoint: { index: 0, position: { lat: 52, lng: -1 }, fraction: 0, etaMs: Date.UTC(2026, 7, 30, 9, 0) } }),
+      weather({ windGustMph: 40, waypoint: { index: 1, position: { lat: 52, lng: -1 }, fraction: 0.5, etaMs: Date.UTC(2026, 7, 30, 10, 0) } }),
+      weather({ visibilityM: 1500, waypoint: { index: 2, position: { lat: 52, lng: -1 }, fraction: 1, etaMs: Date.UTC(2026, 7, 30, 11, 0) } }),
+    ]);
+    expect(r.level).toBe('danger');
+    // Gusts at waypoint 0, danger gusts at waypoint 1, fog at waypoint 2.
+    expect(r.reasons).toHaveLength(3);
+    expect(r.reasons[0]).toMatch(/gusting above 30 mph/);
+    expect(r.reasons[1]).toMatch(/exceed 35 mph/);
+    expect(r.reasons[2]).toMatch(/Visibility/);
+  });
 });
 
 describe('riskColour', () => {
