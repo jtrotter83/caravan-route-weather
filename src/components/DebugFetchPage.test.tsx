@@ -5,9 +5,7 @@ import { DebugFetchPage } from './DebugFetchPage';
 
 describe('DebugFetchPage', () => {
   it('renders and shows results after running probes', async () => {
-    const fetchMock = vi.fn(() =>
-      Promise.resolve(new Response('{"ok":true}', { status: 200 })),
-    );
+    const fetchMock = vi.fn(() => Promise.resolve(new Response('{"ok":true}', { status: 200 })));
     vi.stubGlobal('fetch', fetchMock);
 
     render(<DebugFetchPage />);

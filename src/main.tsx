@@ -5,7 +5,5 @@ import { DebugFetchPage } from './components/DebugFetchPage';
 import './styles.css';
 
 createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    {window.location.hash === '#/debug' ? <DebugFetchPage /> : <App />}
-  </StrictMode>,
+  <StrictMode>{window.location.hash === '#/debug' ? <DebugFetchPage /> : <App />}</StrictMode>,
 );
