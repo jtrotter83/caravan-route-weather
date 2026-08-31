@@ -1,10 +1,13 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   FallbackGeocoder,
   NominatimGeocoder,
+  OpenMeteoGeocoder,
   PhotonGeocoder,
+  RetryingGeocoder,
   debounce,
   photonFeatureToPlace,
+  retrying,
   toPlace,
 } from './geocoding';
 import type { Place } from '../types';
@@ -193,5 +196,149 @@ describe('FallbackGeocoder', () => {
     const geocoder = new FallbackGeocoder([photon, nominatim]);
     await expect(geocoder.search('x', controller.signal)).rejects.toThrow('Aborted');
     expect(nominatim.search).not.toHaveBeenCalled();
+  });
+});
+
+describe('OpenMeteoGeocoder', () => {
+  const gbResult = {
+    name: 'Carlisle',
+    latitude: 54.9,
+    longitude: -2.9,
+    country: 'United Kingdom',
+    country_code: 'GB',
+    admin1: 'England',
+    admin2: 'Cumbria',
+  };
+
+  it('maps results and filters to GB', async () => {
+    const fetchFn = vi.fn(async (url: string) => {
+      expect(url).toContain(encodeURIComponent('Carlisle'));
+      return jsonResponse({
+        results: [
+          gbResult,
+          { ...gbResult, name: 'Carlisle', country_code: 'US', admin1: 'KY', admin2: undefined },
+        ],
+      });
+    });
+    const geocoder = new OpenMeteoGeocoder(fetchFn as unknown as typeof fetch);
+    const places = await geocoder.search('Carlisle');
+    expect(places).toEqual([
+      { label: 'Carlisle, Cumbria, England, United Kingdom', lat: 54.9, lng: -2.9 },
+    ]);
+  });
+
+  it('omits missing admin parts from label', async () => {
+    const fetchFn = vi.fn(async () =>
+      jsonResponse({
+        results: [{ name: 'Skye', latitude: 57.3, longitude: -6.2, country_code: 'GB' }],
+      }),
+    );
+    const geocoder = new OpenMeteoGeocoder(fetchFn as unknown as typeof fetch);
+    expect(await geocoder.search('Skye')).toEqual([{ label: 'Skye', lat: 57.3, lng: -6.2 }]);
+  });
+
+  it('handles empty results', async () => {
+    const geocoder = new OpenMeteoGeocoder((async () =>
+      jsonResponse({})) as unknown as typeof fetch);
+    expect(await geocoder.search('zzz')).toEqual([]);
+  });
+
+  it('throws on HTTP errors', async () => {
+    const geocoder = new OpenMeteoGeocoder(
+      (async () => new Response('{}', { status: 503 })) as unknown as typeof fetch,
+    );
+    await expect(geocoder.search('x')).rejects.toThrow('OpenMeteo search failed: 503');
+  });
+});
+
+describe('RetryingGeocoder', () => {
+  it('retries once on 5xx and succeeds', async () => {
+    const fetchFn = vi
+      .fn()
+      .mockResolvedValueOnce(new Response('{}', { status: 503 }))
+      .mockResolvedValueOnce(
+        jsonResponse({ results: [{ name: 'X', latitude: 1, longitude: 2, country_code: 'GB' }] }),
+      );
+    const inner = new OpenMeteoGeocoder(fetchFn as unknown as typeof fetch);
+    const geocoder = new RetryingGeocoder(inner, { delayMs: 0 });
+    expect(await geocoder.search('x')).toEqual([{ label: 'X', lat: 1, lng: 2 }]);
+    expect(fetchFn).toHaveBeenCalledTimes(2);
+  });
+
+  it('gives up after one retry', async () => {
+    const fetchFn = vi.fn(async () => new Response('{}', { status: 503 }));
+    const inner = new PhotonGeocoder(fetchFn as unknown as typeof fetch);
+    const geocoder = new RetryingGeocoder(inner, { delayMs: 0 });
+    await expect(geocoder.search('x')).rejects.toThrow('Photon search failed: 503');
+    expect(fetchFn).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not retry on 404', async () => {
+    const fetchFn = vi.fn(async () => new Response('{}', { status: 404 }));
+    const inner = new PhotonGeocoder(fetchFn as unknown as typeof fetch);
+    const geocoder = new RetryingGeocoder(inner, { delayMs: 0 });
+    await expect(geocoder.search('x')).rejects.toThrow('Photon search failed: 404');
+    expect(fetchFn).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not retry on TypeError (network failure)', async () => {
+    const fetchFn = vi.fn(async () => {
+      throw new TypeError('Failed to fetch');
+    });
+    const inner = new PhotonGeocoder(fetchFn as unknown as typeof fetch);
+    const geocoder = new RetryingGeocoder(inner, { delayMs: 0 });
+    await expect(geocoder.search('x')).rejects.toThrow('Failed to fetch');
+    expect(fetchFn).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not retry when the signal is already aborted', async () => {
+    const controller = new AbortController();
+    controller.abort();
+    const fetchFn = vi.fn(async () => new Response('{}', { status: 503 }));
+    const inner = new PhotonGeocoder(fetchFn as unknown as typeof fetch);
+    const geocoder = new RetryingGeocoder(inner, { delayMs: 0 });
+    await expect(geocoder.search('x', controller.signal)).rejects.toThrow('503');
+    expect(fetchFn).toHaveBeenCalledTimes(1);
+  });
+
+  it('aborts during the retry delay without issuing the retry', async () => {
+    const controller = new AbortController();
+    const fetchFn = vi.fn(async () => new Response('{}', { status: 503 }));
+    const inner = new PhotonGeocoder(fetchFn as unknown as typeof fetch);
+    const geocoder = new RetryingGeocoder(inner, { delayMs: 10_000 });
+    const promise = geocoder.search('x', controller.signal);
+    const assertion = expect(promise).rejects.toThrow();
+    setTimeout(() => controller.abort(), 5);
+    await assertion;
+    expect(fetchFn).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('three-provider fallback', () => {
+  it('falls through retries to the Open-Meteo anchor', async () => {
+    const photon = new PhotonGeocoder(
+      (async () => new Response('{}', { status: 503 })) as unknown as typeof fetch,
+    );
+    const nominatim = new NominatimGeocoder((async () => {
+      throw new TypeError('Failed to fetch');
+    }) as unknown as typeof fetch);
+    const omResult = {
+      results: [
+        {
+          name: 'Inverness',
+          latitude: 57.5,
+          longitude: -4.2,
+          country: 'United Kingdom',
+          country_code: 'GB',
+          admin1: 'Scotland',
+        },
+      ],
+    };
+    const openMeteo = new OpenMeteoGeocoder((async () =>
+      jsonResponse(omResult)) as unknown as typeof fetch);
+    const geocoder = new FallbackGeocoder([retrying(photon), retrying(nominatim), openMeteo]);
+    expect(await geocoder.search('Inverness')).toEqual([
+      { label: 'Inverness, Scotland, United Kingdom', lat: 57.5, lng: -4.2 },
+    ]);
   });
 });

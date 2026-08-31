@@ -104,6 +104,97 @@ export class PhotonGeocoder implements Geocoder {
   }
 }
 
+/** Raw Open-Meteo result as returned by geocoding-api.open-meteo.com. */
+export interface OpenMeteoResult {
+  name?: string;
+  latitude?: number;
+  longitude?: number;
+  country?: string;
+  country_code?: string;
+  admin1?: string;
+  admin2?: string;
+}
+
+/** Map an Open-Meteo result to our Place type. */
+export function openMeteoResultToPlace(r: OpenMeteoResult): Place {
+  const parts = [r.name, r.admin2, r.admin1, r.country].filter((s): s is string =>
+    Boolean(s && s.trim()),
+  );
+  const label = parts.length > 0 ? parts.join(', ') : 'Unnamed place';
+  return { label, lat: r.latitude as number, lng: r.longitude as number };
+}
+
+/**
+ * Open-Meteo geocoder (CORS open, GB-restricted client-side).
+ * Used as the stable last-resort anchor in the fallback chain.
+ */
+export class OpenMeteoGeocoder implements Geocoder {
+  private readonly fetchFn: typeof fetch;
+
+  constructor(fetchFn: typeof fetch = fetch) {
+    this.fetchFn = fetchFn;
+  }
+
+  async search(query: string, signal?: AbortSignal): Promise<Place[]> {
+    const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=5&language=en&format=json`;
+    const res = await this.fetchFn(url, { signal, headers: { Accept: 'application/json' } });
+    if (!res.ok) throw new Error(`OpenMeteo search failed: ${res.status}`);
+    const body = (await res.json()) as { results?: OpenMeteoResult[] };
+    return (body.results ?? []).filter((r) => r.country_code === 'GB').map(openMeteoResultToPlace);
+  }
+}
+
+/** True for transient server-side failures worth one retry (HTTP 5xx). */
+export function isRetryableError(err: unknown): boolean {
+  return err instanceof Error && /\b5\d{2}\b/.test(err.message);
+}
+
+/**
+ * Wraps a geocoder and retries once on retryable (HTTP 5xx) failures,
+ * after a short delay. Aborted requests are never retried.
+ */
+export class RetryingGeocoder implements Geocoder {
+  private readonly inner: Geocoder;
+  private readonly delayMs: number;
+  private readonly shouldRetry: (err: unknown) => boolean;
+
+  constructor(
+    inner: Geocoder,
+    {
+      delayMs = 300,
+      shouldRetry = isRetryableError,
+    }: { delayMs?: number; shouldRetry?: (err: unknown) => boolean } = {},
+  ) {
+    this.inner = inner;
+    this.delayMs = delayMs;
+    this.shouldRetry = shouldRetry;
+  }
+
+  async search(query: string, signal?: AbortSignal): Promise<Place[]> {
+    try {
+      return await this.inner.search(query, signal);
+    } catch (err) {
+      if (signal?.aborted || !this.shouldRetry(err)) throw err;
+      await new Promise<void>((resolve, reject) => {
+        const timer = setTimeout(() => {
+          signal?.removeEventListener('abort', onAbort);
+          resolve();
+        }, this.delayMs);
+        const onAbort = () => {
+          clearTimeout(timer);
+          reject(signal?.reason ?? new Error('Aborted'));
+        };
+        signal?.addEventListener('abort', onAbort, { once: true });
+      });
+      return this.inner.search(query, signal);
+    }
+  }
+}
+
+/** Convenience: wrap a geocoder with a single retry on 5xx. */
+export const retrying = (inner: Geocoder, delayMs = 300): Geocoder =>
+  new RetryingGeocoder(inner, { delayMs });
+
 /**
  * Tries providers in order; the first provider that returns wins.
  * If a provider fails (network or HTTP error) the next one is tried;
