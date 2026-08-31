@@ -38,7 +38,7 @@ interface OpenMeteoLocationResponse {
 export class OpenMeteoWeatherService implements WeatherService {
   private readonly fetchFn: typeof fetch;
 
-  constructor(fetchFn: typeof fetch = fetch) {
+  constructor(fetchFn: typeof fetch = fetch.bind(globalThis)) {
     this.fetchFn = fetchFn;
   }
 

@@ -1,4 +1,11 @@
 import { useState } from 'react';
+import {
+  FallbackGeocoder,
+  NominatimGeocoder,
+  OpenMeteoGeocoder,
+  PhotonGeocoder,
+  retrying,
+} from '../services/geocoding';
 
 /**
  * Temporary diagnostics page (hash route: #/debug).
@@ -16,6 +23,15 @@ interface ProbeResult {
   errName?: string;
   errMsg?: string;
   ms?: number;
+}
+
+/** Real app geocoder chain, wired exactly as App.tsx wires it. */
+function buildAppGeocoder(): FallbackGeocoder {
+  return new FallbackGeocoder([
+    retrying(new PhotonGeocoder()),
+    retrying(new NominatimGeocoder()),
+    new OpenMeteoGeocoder(),
+  ]);
 }
 
 const TARGETS: Array<{ label: string; url: string }> = [
@@ -62,10 +78,35 @@ export function DebugFetchPage() {
   const [results, setResults] = useState<ProbeResult[]>(
     TARGETS.map((t) => ({ label: t.label, state: 'pending' as const })),
   );
+  const [geocoderResult, setGeocoderResult] = useState<string>('(not run)');
   const [started, setStarted] = useState(false);
+
+  /** Fifth probe: the real app geocoder chain (q=Pentewan), raw outcome. */
+  const runGeocoderProbe = () => {
+    setGeocoderResult('pending …');
+    const t0 = performance.now();
+    buildAppGeocoder()
+      .search('Pentewan')
+      .then((places) => {
+        setGeocoderResult(
+          `done (${Math.round(performance.now() - t0)}ms)\n  results=${places.length}\n  first=${places[0]?.label ?? '(none)'}`,
+        );
+      })
+      .catch((e: unknown) => {
+        const err = e as Error;
+        setGeocoderResult(
+          [
+            `failed (${Math.round(performance.now() - t0)}ms)`,
+            `  ctor=${err?.constructor?.name ?? 'unknown'} name=${err?.name ?? 'unknown'}`,
+            `  message=${err?.message ?? String(e)}`,
+          ].join('\n'),
+        );
+      });
+  };
 
   const run = () => {
     setStarted(true);
+    runGeocoderProbe();
     TARGETS.forEach((t, i) => {
       void runProbe(t.label, t.url, (r) =>
         setResults((prev) => prev.map((p, j) => (j === i ? r : p))),
@@ -105,6 +146,8 @@ export function DebugFetchPage() {
           {results.map((r) => line(r)).join('\n\n')}
         </pre>
       )}
+      <h2>App geocoder chain (Pentewan)</h2>
+      <pre style={{ whiteSpace: 'pre-wrap', fontSize: '18px' }}>{geocoderResult}</pre>
     </div>
   );
 }
