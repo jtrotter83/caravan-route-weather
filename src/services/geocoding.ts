@@ -22,7 +22,7 @@ export function toPlace(r: { display_name: string; lat: string; lon: string }): 
 export class NominatimGeocoder implements Geocoder {
   private readonly fetchFn: typeof fetch;
 
-  constructor(fetchFn: typeof fetch = fetch) {
+  constructor(fetchFn: typeof fetch = fetch.bind(globalThis)) {
     this.fetchFn = fetchFn;
   }
 
@@ -86,7 +86,7 @@ export function photonFeatureToPlace(f: PhotonFeature): Place {
 export class PhotonGeocoder implements Geocoder {
   private readonly fetchFn: typeof fetch;
 
-  constructor(fetchFn: typeof fetch = fetch) {
+  constructor(fetchFn: typeof fetch = fetch.bind(globalThis)) {
     this.fetchFn = fetchFn;
   }
 
@@ -131,7 +131,7 @@ export function openMeteoResultToPlace(r: OpenMeteoResult): Place {
 export class OpenMeteoGeocoder implements Geocoder {
   private readonly fetchFn: typeof fetch;
 
-  constructor(fetchFn: typeof fetch = fetch) {
+  constructor(fetchFn: typeof fetch = fetch.bind(globalThis)) {
     this.fetchFn = fetchFn;
   }
 

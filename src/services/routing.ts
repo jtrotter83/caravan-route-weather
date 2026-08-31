@@ -42,7 +42,7 @@ export interface RoutingService {
 export class OsrmRoutingService implements RoutingService {
   private readonly fetchFn: typeof fetch;
 
-  constructor(fetchFn: typeof fetch = fetch) {
+  constructor(fetchFn: typeof fetch = fetch.bind(globalThis)) {
     this.fetchFn = fetchFn;
   }
 
