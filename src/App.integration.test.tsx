@@ -32,6 +32,27 @@ beforeEach(() => {
     'fetch',
     vi.fn(async (url: string | URL) => {
       const u = url.toString();
+      if (u.includes('photon')) {
+        const isStart = u.includes('Birmingham');
+        return new Response(
+          JSON.stringify({
+            features: [
+              {
+                geometry: {
+                  coordinates: isStart
+                    ? [start.lng, start.lat]
+                    : [destination.lng, destination.lat],
+                },
+                properties: {
+                  name: isStart ? 'Birmingham, UK' : 'Manchester, UK',
+                  countrycode: 'GB',
+                },
+              },
+            ],
+          }),
+          { status: 200 },
+        );
+      }
       if (u.includes('nominatim')) {
         const isStart = u.includes('Birmingham');
         return new Response(
