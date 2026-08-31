@@ -25,15 +25,25 @@ export function PlaceInput({ label, placeholder, geocoder, onSelect }: Props) {
       abortRef.current = controller;
       try {
         const places = await geocoder.search(q, controller.signal);
+        // Race guard: a newer search has started, drop these stale results.
+        if (abortRef.current !== controller) return;
         setResults(places);
         setError(null);
       } catch (e) {
-        if (!(e instanceof DOMException && e.name === 'AbortError')) {
-          setError(e instanceof Error ? e.message : 'Search failed');
-          setResults([]);
+        // A newer search superseded this one; drop the stale rejection.
+        if (abortRef.current !== controller) return;
+        // Duck-typed abort check: on some mobile browsers the rejection is not
+        // an instanceof DOMException (cross-realm), so instanceof leaks it.
+        const err = e as { name?: string; message?: string };
+        if (err?.name === 'AbortError') return;
+        if (e instanceof TypeError) {
+          setError('Search unavailable — check connection');
+        } else {
+          setError(err?.message ?? 'Search failed');
         }
+        setResults([]);
       } finally {
-        setLoading(false);
+        if (abortRef.current === controller) setLoading(false);
       }
     }, 500),
   ).current;
