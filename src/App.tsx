@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import type { Place } from './types';
-import { NominatimGeocoder } from './services/geocoding';
+import { FallbackGeocoder, NominatimGeocoder, PhotonGeocoder } from './services/geocoding';
 import { OsrmRoutingService } from './services/routing';
 import { OpenMeteoWeatherService } from './services/weather';
 import { defaultDepartureMs, useTripPlanner } from './hooks/useTripPlanner';
@@ -26,7 +26,7 @@ export function App() {
     () => ({
       routing: new OsrmRoutingService(),
       weather: new OpenMeteoWeatherService(),
-      geocoder: new NominatimGeocoder(),
+      geocoder: new FallbackGeocoder([new PhotonGeocoder(), new NominatimGeocoder()]),
     }),
     [],
   );
