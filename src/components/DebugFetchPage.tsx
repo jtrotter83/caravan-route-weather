@@ -31,11 +31,7 @@ const TARGETS: Array<{ label: string; url: string }> = [
   { label: 'same-origin /index.html', url: 'index.html' },
 ];
 
-async function runProbe(
-  label: string,
-  url: string,
-  set: (r: ProbeResult) => void,
-): Promise<void> {
+async function runProbe(label: string, url: string, set: (r: ProbeResult) => void): Promise<void> {
   set({ label, state: 'pending' });
   const t0 = performance.now();
   try {
